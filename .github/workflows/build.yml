@@ -47,8 +47,17 @@ jobs:
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          if [ -z "$CSC_LINK" ]; then export CSC_IDENTITY_AUTO_DISCOVERY=false; fi
-          if [ -n "$APPLE_ID" ]; then EXTRA="-c.mac.notarize=true"; fi
+          # Empty GitHub secrets become empty env vars; electron-builder treats
+          # empty CSC_LINK as a cert path and fails with "vidvision not a file".
+          if [ -z "$CSC_LINK" ]; then
+            unset CSC_LINK CSC_KEY_PASSWORD
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+          fi
+          if [ -z "$APPLE_ID" ]; then
+            unset APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
+          else
+            EXTRA="-c.mac.notarize=true"
+          fi
           npm run check && npm run build:renderer && node scripts/fetch-mac-bins.js
           npx electron-builder --mac --arm64 --x64 --publish never $EXTRA
       - uses: actions/upload-artifact@v5
