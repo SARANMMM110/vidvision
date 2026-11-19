@@ -1,5 +1,5 @@
 # Builds the Windows installer and the Mac app (Apple silicon + Intel) on GitHub's machines.
-# Push a tag like v1.2.0, or run it by hand from the Actions tab.
+# Push a tag like v1.3.0, or run it by hand from the Actions tab.
 #
 # Mac signing + notarisation (optional but recommended, otherwise macOS warns on first open):
 #   Repository → Settings → Secrets and variables → Actions → add
@@ -19,21 +19,22 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npm run dist:win
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: windows-installer
           path: release/*.exe
 
   mac:
-    runs-on: macos-14
+    # macos-14 was retired Nov 2026; macos-15 is Apple silicon (arm64)
+    runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with: { node-version: 22, cache: npm }
       - run: npm ci
       # Both Mac builds need the voice engine for both chips.
@@ -50,7 +51,7 @@ jobs:
           if [ -n "$APPLE_ID" ]; then EXTRA="-c.mac.notarize=true"; fi
           npm run check && npm run build:renderer && node scripts/fetch-mac-bins.js
           npx electron-builder --mac --arm64 --x64 --publish never $EXTRA
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: mac-app
           path: |
