@@ -1,0 +1,58 @@
+# Builds the Windows installer and the Mac app (Apple silicon + Intel) on GitHub's machines.
+# Push a tag like v1.2.0, or run it by hand from the Actions tab.
+#
+# Mac signing + notarisation (optional but recommended, otherwise macOS warns on first open):
+#   Repository → Settings → Secrets and variables → Actions → add
+#     CSC_LINK            base64 of your "Developer ID Application" .p12 certificate
+#     CSC_KEY_PASSWORD    the .p12 password
+#     APPLE_ID            your Apple ID email
+#     APPLE_APP_SPECIFIC_PASSWORD   app-specific password from appleid.apple.com
+#     APPLE_TEAM_ID       your 10-character team ID
+name: Build apps
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run dist:win
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: release/*.exe
+
+  mac:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      # Both Mac builds need the voice engine for both chips.
+      - run: npm install --no-save --force sherpa-onnx-darwin-arm64@2.0.1 sherpa-onnx-darwin-x64@2.0.1
+      - name: Build (signed and notarised when the secrets are set)
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -z "$CSC_LINK" ]; then export CSC_IDENTITY_AUTO_DISCOVERY=false; fi
+          if [ -n "$APPLE_ID" ]; then EXTRA="-c.mac.notarize=true"; fi
+          npm run check && npm run build:renderer && node scripts/fetch-mac-bins.js
+          npx electron-builder --mac --arm64 --x64 --publish never $EXTRA
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-app
+          path: |
+            release/*.dmg
+            release/*.zip

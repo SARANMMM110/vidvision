@@ -1,0 +1,12 @@
+{
+  "appName": "Vid Vision",
+  "serverUrl": "https://vidvision.aipowerlessons.com",
+  "primaryColor": "#6d5efc",
+  "accentColor": "#22d3ee",
+  "supportUrl": "",
+  "modules": {
+    "vision": "Vision Engine",
+    "voice": "Voice Engine",
+    "scribe": "Scribe Engine"
+  }
+}
